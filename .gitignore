@@ -1,0 +1,8 @@
+dist/
+build/
+*.syso
+*.exe
+cmd/master/embedded/OrbitAgent.exe
+instance.json
+master.json
+*.log
