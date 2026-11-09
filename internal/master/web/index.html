@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbit Master</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar"></aside>
+    <main>
+      <header id="topbar">
+        <div class="title-area"><h1 id="viewTitle">Orbit</h1><span class="sub" id="viewSub"></span></div>
+        <button class="search-btn" id="paletteBtn"></button>
+        <div id="topPills" style="display:flex;gap:8px"></div>
+      </header>
+      <section class="view" id="view-computers">
+        <div id="toolbar"></div>
+        <div id="selbar"></div>
+        <div id="gridWrap"><div id="grid"></div><div id="gridEmpty"></div></div>
+      </section>
+      <section class="view" id="view-discover"><div class="view-scroll"><div class="page" id="discoverPage"></div></div></section>
+      <section class="view" id="view-inbox"><div class="view-scroll"><div class="page" id="inboxPage"></div></div></section>
+      <section class="view" id="view-polls"><div class="view-scroll"><div class="page" id="pollsPage"></div></div></section>
+      <section class="view" id="view-shots"><div class="view-scroll"><div class="page" id="shotsPage" style="max-width:1400px"></div></div></section>
+      <section class="view" id="view-help"><div class="view-scroll"><div id="helpPage"></div></div></section>
+      <section class="view" id="view-settings"><div class="view-scroll"><div class="page" id="settingsPage" style="max-width:860px"></div></div></section>
+    </main>
+  </div>
+  <div id="toasts"></div>
+  <script src="js/icons.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/stream.js"></script>
+  <script src="js/markdown.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
