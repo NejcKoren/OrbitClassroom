@@ -47,8 +47,8 @@ Kaj naredi namestitveni program (za skrbnike IT):
 
 - program kopira v `C:\Program Files\Orbit Classroom\OrbitAgent.exe`
 - nastavitve zapiše v `C:\ProgramData\Orbit Classroom\agent.json` in tam ustvari potrdilo TLS; mapa je za učence *samo za branje* (Skrbniki/SYSTEM polni nadzor, Uporabniki branje)
-- registrira samodejni zagon za vse uporabnike: `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\OrbitAgent`
-- doda pravilo požarnega zidu Windows »Orbit Agent« (dohodne povezave za ta program)
+- **registrira zaščiteno storitev Windows** `OrbitAgentSvc`, ki teče kot LocalSystem, s samodejnim zagonom in ponovnim zagonom ob sesutju. Storitev nadzira agenta v uporabnikovi seji in ga znova zažene v približno 2 sekundah, če se ustavi (glejte 3.6)
+- doda pravilo požarnega zidu Windows »Orbit Agent« za program, **dohodno in odhodno**, za vse profile
 - doda vnos v **Nastavitve → Aplikacije**, da ga lahko običajno odstranite
 
 ### 3.2 Več računalnikov hkrati (tiha namestitev)
@@ -65,7 +65,16 @@ Ključ se prebere iz datoteke **orbit-agent.json** v isti mapi. Ključ lahko pod
 OrbitAgent.exe --install --silent --key OPK1-XXXX-XXXX-...
 ```
 
-S `--silent` se ne prikaže nobeno okno. Agent se zažene ob naslednji prijavi (ali ponovno zaženite računalnik). Izhodna koda 0 = uspeh.
+S `--silent` se ne prikaže nobeno okno. Zaščitena storitev se zažene takoj in zažene agenta v trenutni seji; deluje tudi za vse prihodnje uporabnike. Izhodna koda 0 = uspeh.
+
+Dodatne možnosti za množično namestitev:
+
+| Možnost | Pomen |
+|---|---|
+| `--key OPK1-…` | ključ učilnice (ali več, ločenih z vejico) |
+| `--no-service` | namestitev na preprost način (samo samodejni zagon, brez zaščitene storitve – učenec bi lahko agenta zaprl do naslednje prijave) |
+| `--port N` | uporabi druga vrata TCP |
+| `--lang sl` | določi jezik za učence |
 
 ### 3.3 Preizkus brez namestitve
 
@@ -77,7 +86,22 @@ Novi OrbitAgent.exe zaženite z `--install` (ali uporabite nov namestitveni pake
 
 ### 3.5 Odstranitev
 
-**Nastavitve → Aplikacije → Orbit Agent (Orbit Classroom) → Odstrani** ali `OrbitAgent.exe --uninstall` (za skripte dodajte `--silent`).
+**Nastavitve → Aplikacije → Orbit Agent (Orbit Classroom) → Odstrani** ali `OrbitAgent.exe --uninstall` (za skripte dodajte `--silent`). Odstranitev ustavi in izbriše storitev, odstrani pravilo požarnega zidu ter izbriše program in njegove nastavitve. Potrebne so skrbniške pravice (program jih zahteva).
+
+### 3.6 Zaščiteni način – zakaj ga učenec ne more izklopiti
+
+Privzeto je agent nameščen kot **storitev Windows** (`OrbitAgentSvc`). V učilnici je to pomembno:
+
+- Storitev teče pod računom **SYSTEM** in se zažene **še pred** prijavo kogar koli. Za zaustavitev ali brisanje storitve Windows so potrebne skrbniške pravice, zato učenec (navaden uporabnik) nadzora ne more izklopiti prek Storitev, ukaza `sc stop` ali zavihkov »Storitve«/»Zagon« v upravitelju opravil.
+- Če učenec konča agenta v upravitelju opravil, storitev to opazi in ga **znova zažene v približno dveh sekundah**, zato učitelj izgubi sliko le za trenutek.
+- Če se storitev sama sesuje, jo Windows samodejno znova zažene (dejanja za obnovitev).
+- Program je v `C:\Program Files\...`, kjer ga navaden uporabnik ne more spremeniti ali izbrisati, njegova mapa z nastavitvami pa je zanj samo za branje.
+
+Nič ni skrito: agent še vedno prikazuje ikono v sistemski vrstici in obvestila »učitelj gleda tvoj zaslon« tako kot prej. Zaščiteni način spremeni le to, **kdo ga lahko izklopi** (skrbnik), ne pa tudi tega, **ali učenec ve, da je tam** (to vedno lahko).
+
+Če želite preprostejše vedenje – agent se zažene ob prijavi, a bi ga učenec lahko zaprl do naslednje prijave – namestite z `--no-service`. To je lahko uporabno na učiteljevih prenosnikih ali za hitre preizkuse.
+
+> Opomba o prijavnem zaslonu Windows: agent učitelju prikaže zaslon le, dokler je uporabnik prijavljen, saj mora zajem zaslona teči znotraj njegove seje. Storitev agenta ohranja pri življenju in ga znova zažene, sama pa ne more prikazati prijavnega zaslona (za geslo). Vklop, ponovni zagon in zaustavitev prijavljenih računalnikov delujejo ne glede na to.
 
 ## 4. Varnostna opozorila sistema Windows – kaj pomenijo
 
@@ -85,7 +109,7 @@ Novi OrbitAgent.exe zaženite z `--install` (ali uporabite nov namestitveni pake
 
 **Protivirusni program.** Programe, ki lahko gledajo in upravljajo zaslone, protivirusni programi včasih označijo, ker se orodja za oddaljeno upravljanje lahko zlorabijo. Če je OrbitAgent.exe blokiran, dodajte izjemo za `C:\Program Files\Orbit Classroom\`.
 
-**Požarni zid.** Namestitveni program pravilo požarnega zidu ustvari samodejno. Če uporabljate drug požarni zid, za OrbitAgent.exe dovolite dohodna vrata TCP 21400 in UDP 21401.
+**Požarni zid.** Namestitveni program požarni zid Windows za OrbitAgent.exe odpre samodejno, dohodno in odhodno, za vse profile omrežja (domena, zasebno in javno), da učitelj vedno doseže računalnik. Če šola uporablja drug požarni zid, za OrbitAgent.exe dovolite vrata TCP 21400 in UDP 21401.
 
 **Skrbniško okno.** Skrbniške pravice potrebuje samo *namestitev* agenta. Orbit Master jih nikoli ne potrebuje.
 
@@ -412,21 +436,20 @@ Orbit Classroom pokriva vsakdanje funkcije programa Veyon Master za pouk in doda
 | Zagon programa / odpiranje spletne strani | da – plus priljubljene |
 | Prenos datotek, posnetki zaslona | da – plus galerija posnetkov |
 | Učilnice (lokacije) | da – vlečenje in spuščanje, vrstni red sedežev, vgrajeno samodejno iskanje po omrežju |
-| Novo | ankete v živo, dvig roke, sporočila učencev, način zbranosti, dejavnost in čas nedejavnosti, poudarek, ukazna paleta, temna/svetla tema, angleščina + slovenščina z jezikovnimi paketi, vgrajena navodila, dejanja po meri, API za avtomatizacijo, namestitveni paket z enim klikom |
+| Novo | zaščiteni način s storitvijo (učenec ne more zapreti agenta), ankete v živo, dvig roke, sporočila učencev, način zbranosti, dejavnost in čas nedejavnosti, poudarek, ukazna paleta, dvanajst barvnih tem (temne in svetle) + barve poudarka, angleščina + slovenščina z jezikovnimi paketi, preprosta navodila poleg vseh navodil, dejanja po meri, API za avtomatizacijo, namestitveni paket z enim klikom |
 | (Še) ni na voljo | oddaljena prijava uporabnika, ogled prijavnega zaslona Windows, preden je uporabnik prijavljen, računalniki z Linuxom/macOS, uvoz iz LDAP/Active Directory (glejte 16. poglavje) |
 
 ## 16. Znane omejitve in načrt razvoja
 
 Omejitve različice 1.0:
 
-- Agent teče v seji prijavljenega uporabnika. Preden se kdo prijavi, je računalnik prikazan kot nepovezan (vklop, ponovni zagon in zaustavitev prijavljenih računalnikov delujejo).
-- Učenec lahko agenta konča z upraviteljem opravil; računalnik je nato do naslednje prijave prikazan kot nepovezan.
+- Agent zajema zaslon znotraj seje prijavljenega uporabnika. Preden se kdo prijavi, računalnik ne pokaže zaslona (vklop, ponovni zagon in zaustavitev prijavljenih računalnikov delujejo). Zaščitena storitev agenta ohranja pri življenju, ko se uporabnik prijavi, in ga znova zažene, če ga učenec zapre, sama pa ne more prikazati prijavnega zaslona (za geslo).
 - Samo en prijavljen uporabnik na računalnik (ni strežnikov za oddaljeno namizje).
 - Oken UAC, zaslona Ctrl+Alt+Del in programov s skrbniškimi pravicami ni mogoče upravljati (varnost sistema Windows).
 - Samo Windows 10/11.
 - To je prva različica: preizkusite jo v eni učilnici, preden jo uvedete v celi šoli.
 
-Načrtovani / možni naslednji koraki: način storitve Windows (prijavni zaslon, oddaljena prijava, zaščita pred zapiranjem), uvoz učilnic iz Active Directory/CSV, načrtovana dejanja (npr. zaklepanje ob koncu ure – že zdaj mogoče z API-jem), zbiranje datotek od učencev, blokiranje spletnih strani, agent za Linux, več jezikov.
+Načrtovani / možni naslednji koraki: prikaz in prijava na prijavnem zaslonu Windows, uvoz učilnic iz Active Directory/CSV, načrtovana dejanja (npr. zaklepanje ob koncu ure – že zdaj mogoče z API-jem), zbiranje datotek od učencev, blokiranje spletnih strani, agent za Linux, več jezikov.
 
 ## 17. Pregled ukazne vrstice
 
@@ -435,14 +458,17 @@ OrbitAgent.exe:
 | Možnost | Pomen |
 |---|---|
 | (brez) | zagon; prvi zagon prikaže okno za nastavitev |
-| --install | namestitev za vse uporabnike (zahteva skrbniške pravice) |
+| --install | namestitev za vse uporabnike kot zaščitena storitev (zahteva skrbniške pravice) |
 | --install --silent | namestitev brez oken (skripte, GPO, Intune) |
+| --install --no-service | namestitev na preprost način (samo samodejni zagon, učenec ga lahko zapre) |
 | --key OPK1-… | ključ(i) učilnice, ločeni z vejico (z --install) |
 | --uninstall [--silent] | odstranitev s tega računalnika |
 | --portable | zagon brez namestitve |
 | --port N | druga vrata TCP |
 | --lang sl | jezik besedil za učence |
 | --config datoteka | uporabi določeno datoteko z nastavitvami |
+
+(`--service` Windows uporablja interno za zagon storitve v ozadju; sami ga nikoli ne vnašate.)
 
 OrbitMaster.exe:
 

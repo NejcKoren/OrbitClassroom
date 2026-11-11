@@ -23,6 +23,74 @@
   --thumb-bg: #dfe3ee; --glass: rgba(255,255,255,.78);
   color-scheme: light;
 }
+/* ---- extra dark themes ---- */
+:root[data-theme="slate"] {
+  --bg: #0e0f12; --bg2: #15171c; --panel: #1b1e25; --panel2: #23262f; --panel3: #2e323d;
+  --line: rgba(255,255,255,.07); --line2: rgba(255,255,255,.12);
+  --text: #e8eaed; --muted: #9aa0ab; --muted2: #6b7078;
+  --shadow: 0 10px 30px rgba(0,0,0,.4); --shadow-lg: 0 24px 64px rgba(0,0,0,.6);
+  --thumb-bg: #060709; --glass: rgba(27,30,37,.72); color-scheme: dark;
+}
+:root[data-theme="nord"] {
+  --bg: #242933; --bg2: #2e3440; --panel: #333b4a; --panel2: #3b4252; --panel3: #434c5e;
+  --line: rgba(236,239,244,.08); --line2: rgba(236,239,244,.15);
+  --text: #eceff4; --muted: #a7b1c2; --muted2: #7c889e;
+  --shadow: 0 10px 30px rgba(0,0,0,.3); --shadow-lg: 0 24px 64px rgba(0,0,0,.45);
+  --thumb-bg: #1c2028; --glass: rgba(46,52,64,.8); color-scheme: dark;
+}
+:root[data-theme="obsidian"] {
+  --bg: #000000; --bg2: #070709; --panel: #0c0d10; --panel2: #141519; --panel3: #1e1f25;
+  --line: rgba(255,255,255,.06); --line2: rgba(255,255,255,.11);
+  --text: #e6e7ea; --muted: #8a8d96; --muted2: #5c5f68;
+  --shadow: 0 10px 30px rgba(0,0,0,.6); --shadow-lg: 0 24px 64px rgba(0,0,0,.8);
+  --thumb-bg: #000000; --glass: rgba(7,7,9,.82); color-scheme: dark;
+}
+:root[data-theme="dusk"] {
+  --bg: #120e1a; --bg2: #1a1326; --panel: #221a33; --panel2: #2c2340; --panel3: #392e52;
+  --line: rgba(230,220,255,.08); --line2: rgba(230,220,255,.15);
+  --text: #ece8f6; --muted: #a79bc0; --muted2: #726a8c;
+  --shadow: 0 10px 30px rgba(10,0,20,.45); --shadow-lg: 0 24px 64px rgba(10,0,25,.6);
+  --thumb-bg: #0a0710; --glass: rgba(26,19,38,.76); color-scheme: dark;
+}
+:root[data-theme="forest"] {
+  --bg: #0a120e; --bg2: #0f1a14; --panel: #14241b; --panel2: #1c3024; --panel3: #274230;
+  --line: rgba(220,255,235,.07); --line2: rgba(220,255,235,.14);
+  --text: #e6f2ea; --muted: #8fae9c; --muted2: #5f7a69;
+  --shadow: 0 10px 30px rgba(0,10,5,.45); --shadow-lg: 0 24px 64px rgba(0,12,6,.6);
+  --thumb-bg: #060d09; --glass: rgba(15,26,20,.76); color-scheme: dark;
+}
+:root[data-theme="ocean"] {
+  --bg: #081318; --bg2: #0c1b22; --panel: #11252e; --panel2: #17313c; --panel3: #204350;
+  --line: rgba(210,245,255,.07); --line2: rgba(210,245,255,.14);
+  --text: #e3f1f6; --muted: #88a7b2; --muted2: #5a757f;
+  --shadow: 0 10px 30px rgba(0,8,14,.45); --shadow-lg: 0 24px 64px rgba(0,10,16,.6);
+  --thumb-bg: #040c10; --glass: rgba(12,27,34,.76); color-scheme: dark;
+}
+/* ---- extra light themes ---- */
+:root[data-theme="paper"] {
+  --bg: #f3ece0; --bg2: #fbf6ee; --panel: #fdfaf4; --panel2: #f1e9db; --panel3: #e6dccb;
+  --line: rgba(60,45,20,.1); --line2: rgba(60,45,20,.17);
+  --text: #2a2318; --muted: #6b5f4c; --muted2: #938870;
+  --shadow: 0 8px 24px rgba(90,70,30,.1); --shadow-lg: 0 24px 60px rgba(90,70,30,.2);
+  --thumb-bg: #e0d5c2; --glass: rgba(253,250,244,.82); color-scheme: light;
+}
+:root[data-theme="frost"] {
+  --bg: #eef3f8; --bg2: #ffffff; --panel: #ffffff; --panel2: #edf2f8; --panel3: #dde6f0;
+  --line: rgba(20,40,70,.08); --line2: rgba(20,40,70,.15);
+  --text: #132033; --muted: #566879; --muted2: #8495a6;
+  --shadow: 0 8px 24px rgba(30,60,100,.09); --shadow-lg: 0 24px 60px rgba(30,60,100,.18);
+  --thumb-bg: #d7e2ee; --glass: rgba(255,255,255,.82); color-scheme: light;
+}
+:root[data-theme="contrast"] {
+  --bg: #ffffff; --bg2: #ffffff; --panel: #ffffff; --panel2: #f2f2f2; --panel3: #e2e2e2;
+  --line: rgba(0,0,0,.4); --line2: rgba(0,0,0,.65);
+  --text: #000000; --muted: #1a1a1a; --muted2: #333333;
+  --shadow: 0 0 0 1px rgba(0,0,0,.45); --shadow-lg: 0 8px 24px rgba(0,0,0,.45);
+  --thumb-bg: #cccccc; --glass: rgba(255,255,255,.95); color-scheme: light;
+}
+:root[data-theme="contrast"] .btn, :root[data-theme="contrast"] .input, :root[data-theme="contrast"] .tile,
+:root[data-theme="contrast"] .card, :root[data-theme="contrast"] .chip { border-width: 2px; }
+:root[data-theme="contrast"] .muted, :root[data-theme="contrast"] .hint { color: #1a1a1a; }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
@@ -280,7 +348,19 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px
 .set-row .ctl output { min-width: 54px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .keybox { display: flex; gap: 8px; align-items: center; padding: 12px 14px; border-radius: 11px; background: var(--panel2); border: 1px dashed var(--line2); word-break: break-all; }
 .keybox code { flex: 1; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; }
-.swatches { display: flex; gap: 8px; }
+.set-block { flex-direction: column; align-items: stretch; gap: 12px; }
+.set-block .lbl { flex: none; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.theme-chip { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 10px 6px 8px; border: 1.5px solid var(--line2); border-radius: 12px; background: var(--panel2); color: var(--text); transition: border-color .15s, transform .1s, box-shadow .15s; }
+.theme-chip:hover { transform: translateY(-1px); border-color: var(--muted2); }
+.theme-chip.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .4); }
+.theme-chip .tname { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.tswatch { position: relative; width: 100%; height: 42px; border-radius: 9px; overflow: hidden; border: 1px solid rgba(128,128,128,.25); display: block; }
+.tswatch b { position: absolute; left: 10px; top: 9px; right: 10px; bottom: 9px; border-radius: 5px; }
+.tswatch i { position: absolute; right: 7px; bottom: 7px; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--panel2); }
+.theme-menu { width: 384px; max-height: 72vh; overflow-y: auto; }
+.theme-menu .theme-grid { padding: 4px; grid-template-columns: repeat(3, 1fr); }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; outline: 2px solid transparent; cursor: pointer; transition: transform .12s; }
 .swatch:hover { transform: scale(1.1); }
 .swatch.on { outline-color: var(--text); border-color: var(--bg); }

@@ -31,7 +31,7 @@ const S = {
   filter: 'all', query: '', spot: false,
   tiles: new Map(), visible: new Set(),
   discover: { results: null, busy: false, scan: false, picked: new Set() },
-  shots: null, docLang: null, connected: true, handsSeen: new Set(),
+  shots: null, docLang: null, docKind: 'simple', connected: true, handsSeen: new Set(),
 };
 
 const ACCENTS = {
@@ -39,7 +39,36 @@ const ACCENTS = {
   sky: ['#38bdf8', '56,189,248', '#6b7cff'], teal: ['#14b8a6', '20,184,166', '#38bdf8'],
   green: ['#22c55e', '34,197,94', '#14b8a6'], orange: ['#f97316', '249,115,22', '#f43f5e'],
   pink: ['#ec4899', '236,72,153', '#9b6bff'], red: ['#ef4444', '239,68,68', '#f97316'],
+  amber: ['#f59e0b', '245,158,11', '#f97316'], cyan: ['#06b6d4', '6,182,212', '#3b82f6'],
+  lime: ['#84cc16', '132,204,22', '#22c55e'], rose: ['#f43f5e', '244,63,94', '#ec4899'],
 };
+
+// Named themes. base decides the light/dark toggle icon and the "auto" default.
+// Each id matches a :root[data-theme="id"] block in app.css; swatch = [bg, panel]
+// just for the little preview in Settings.
+const THEMES = [
+  { id: 'auto', base: 'auto', swatch: ['#1b2030', '#f1f3f9'] },
+  { id: 'dark', base: 'dark', swatch: ['#0a0c12', '#151924'] },     // Midnight
+  { id: 'slate', base: 'dark', swatch: ['#0e0f12', '#1b1e25'] },
+  { id: 'nord', base: 'dark', swatch: ['#2e3440', '#3b4252'] },
+  { id: 'obsidian', base: 'dark', swatch: ['#000000', '#0c0d10'] },
+  { id: 'dusk', base: 'dark', swatch: ['#120e1a', '#221a33'] },
+  { id: 'forest', base: 'dark', swatch: ['#0a120e', '#14241b'] },
+  { id: 'ocean', base: 'dark', swatch: ['#081318', '#11252e'] },
+  { id: 'light', base: 'light', swatch: ['#f3f5fa', '#ffffff'] },   // Daylight
+  { id: 'paper', base: 'light', swatch: ['#f3ece0', '#fdfaf4'] },
+  { id: 'frost', base: 'light', swatch: ['#eef3f8', '#ffffff'] },
+  { id: 'contrast', base: 'light', swatch: ['#ffffff', '#ffffff'] },
+];
+
+const themeOf = id => THEMES.find(x => x.id === id) || THEMES[1];
+function resolvedTheme() {
+  let th = S.settings.theme || 'dark';
+  if (th === 'auto') th = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  if (!THEMES.find(x => x.id === th)) th = 'dark';
+  return th;
+}
+const themeBase = () => themeOf(resolvedTheme()).base;
 
 // ===================================================================== boot
 
@@ -71,9 +100,9 @@ function applyMeta(meta) {
 }
 
 function applyTheme() {
-  let th = S.settings.theme || 'dark';
-  if (th === 'auto') th = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  const th = resolvedTheme();
   document.documentElement.dataset.theme = th;
+  document.documentElement.dataset.base = themeOf(th).base;
   const a = ACCENTS[S.settings.accent] || ACCENTS.indigo;
   const r = document.documentElement.style;
   r.setProperty('--accent', a[0]); r.setProperty('--accent-rgb', a[1]); r.setProperty('--accent-2', a[2]);
@@ -260,7 +289,7 @@ function renderSidebar() {
       <button class="nav-item ${S.view === 'help' ? 'active' : ''}" data-nav="help">${icon('help')}<span>${esc(t('nav.help'))}</span></button>
       <button class="nav-item ${S.view === 'settings' ? 'active' : ''}" data-nav="settings">${icon('settings')}<span>${esc(t('nav.settings'))}</span></button>
       <div class="foot-row">
-        <button class="icon-btn" id="themeBtn" title="${esc(t('settings.theme'))}">${icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon')}</button>
+        <button class="icon-btn" id="themeBtn" title="${esc(t('settings.theme'))}">${icon(themeBase() === 'dark' ? 'sun' : 'moon')}</button>
         <button class="icon-btn" id="langBtn" title="${esc(t('settings.language'))}">${icon('language')}<small style="margin-left:4px;font-weight:700">${esc(I18N.lang.toUpperCase())}</small></button>
       </div>
       <div class="version">Orbit Classroom ${esc(S.meta.version || '')}</div>
@@ -281,7 +310,7 @@ function renderSidebar() {
     });
   });
   $('#addRoomBtn').onclick = addRoomDialog;
-  $('#themeBtn').onclick = () => { const cur = document.documentElement.dataset.theme; saveSettings({ theme: cur === 'dark' ? 'light' : 'dark' }); applyTheme(); sb._html = ''; renderSidebar(); };
+  $('#themeBtn').onclick = e => themeMenu(e.currentTarget);
   $('#langBtn').onclick = e => showMenu(e.currentTarget, S.langs.map(l => ({ label: l.name, hint: l.code.toUpperCase(), icon: l.code === I18N.lang ? 'check' : 'language', onClick: () => switchLang(l.code) })));
 }
 
@@ -768,6 +797,41 @@ function showMenu(anchor, items) {
   x = clamp(x, 8, innerWidth - mw - 8); y = clamp(y, 8, innerHeight - mh - 8);
   m.style.left = x + 'px'; m.style.top = y + 'px';
   $$('button[data-i]', m).forEach(b => b.onclick = () => { closeMenu(); const it = items[+b.dataset.i]; it.onClick && it.onClick(); });
+  openMenuEl = m;
+  setTimeout(() => document.addEventListener('mousedown', function h(ev) { if (!m.contains(ev.target)) { closeMenu(); document.removeEventListener('mousedown', h); } }), 0);
+}
+
+// themeGridHTML builds the clickable grid of theme previews.
+function themeGridHTML() {
+  const cur = S.settings.theme || 'dark';
+  return `<div class="theme-grid">${THEMES.map(th => {
+    const name = th.id === 'auto' ? t('theme.auto') : t('theme.name.' + th.id);
+    const prev = th.id === 'auto'
+      ? `<span class="tswatch" style="background:linear-gradient(135deg,#0a0c12 50%,#f3f5fa 50%)"><i style="background:var(--accent)"></i></span>`
+      : `<span class="tswatch" style="background:${th.swatch[0]}"><b style="background:${th.swatch[1]}"></b><i style="background:var(--accent)"></i></span>`;
+    return `<button class="theme-chip ${cur === th.id ? 'on' : ''}" data-theme-id="${th.id}" title="${esc(name)}">${prev}<span class="tname">${esc(name)}</span></button>`;
+  }).join('')}</div>`;
+}
+
+function pickTheme(id) {
+  saveSettings({ theme: id });
+  applyTheme();
+  const sb = $('#sidebar'); if (sb) sb._html = '';
+  renderSidebar();
+  if (S.view === 'settings') renderSettings();
+}
+
+function themeMenu(anchor) {
+  closeMenu();
+  const m = document.createElement('div');
+  m.className = 'menu theme-menu';
+  m.innerHTML = `<div class="menu-title">${esc(t('settings.theme'))}</div>${themeGridHTML()}`;
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  const mw = m.offsetWidth, mh = m.offsetHeight;
+  m.style.left = clamp(r.left, 8, innerWidth - mw - 8) + 'px';
+  m.style.top = clamp(r.top - mh - 8, 8, innerHeight - mh - 8) + 'px';
+  $$('[data-theme-id]', m).forEach(b => b.onclick = () => { closeMenu(); pickTheme(b.dataset.themeId); });
   openMenuEl = m;
   setTimeout(() => document.addEventListener('mousedown', function h(ev) { if (!m.contains(ev.target)) { closeMenu(); document.removeEventListener('mousedown', h); } }), 0);
 }
@@ -1496,12 +1560,18 @@ function renderShots() {
 async function renderHelp() {
   const p = $('#helpPage');
   const lang = S.docLang || I18N.lang;
+  const kind = S.docKind || 'simple';
   let md = '';
-  try { md = await (await fetch('/api/docs/' + lang)).text(); } catch { md = '# Help\n\nCould not load the guide.'; }
+  try { md = await (await fetch('/api/docs/' + lang + (kind === 'simple' ? '?kind=simple' : ''))).text(); } catch { md = '# Help\n\nCould not load the guide.'; }
   const { html, toc } = renderMarkdown(md);
   const langBtns = S.langs.map(l => `<button class="${l.code === lang ? 'on' : ''}" data-dl="${esc(l.code)}">${esc(l.code.toUpperCase())}</button>`).join('');
-  p.innerHTML = `<div class="help"><nav class="toc"><input class="input" id="hSearch" placeholder="${esc(t('help.search'))}" style="margin-bottom:8px"><div class="seg" style="margin-bottom:10px">${langBtns}</div>
+  const kindBtns = `<button class="${kind === 'simple' ? 'on' : ''}" data-dk="simple">${icon('sparkles')}${esc(t('help.simple'))}</button><button class="${kind === 'full' ? 'on' : ''}" data-dk="full">${icon('info')}${esc(t('help.full'))}</button>`;
+  p.innerHTML = `<div class="help"><nav class="toc">
+    <div class="seg" style="margin-bottom:8px;width:100%" id="hKind">${kindBtns}</div>
+    <input class="input" id="hSearch" placeholder="${esc(t('help.search'))}" style="margin-bottom:8px">
+    <div class="seg" style="margin-bottom:10px">${langBtns}</div>
     ${toc.map(x => `<a href="#${x.id}" class="h${x.lvl}" data-id="${x.id}">${esc(x.text)}</a>`).join('')}</nav><article class="doc" id="hDoc">${html}</article></div>`;
+  $$('[data-dk]', p).forEach(b => b.onclick = () => { S.docKind = b.dataset.dk; renderHelp(); });
   $$('[data-dl]', p).forEach(b => b.onclick = () => { S.docLang = b.dataset.dl; renderHelp(); });
   $$('.toc a', p).forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById(a.dataset.id); el && el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   const doc = $('#hDoc', p);
@@ -1537,7 +1607,7 @@ function renderSettings() {
   p.innerHTML = `
   <div class="card"><h2>${icon('palette')}${esc(t('settings.general'))}</h2><p class="hint"></p>
     ${row(t('settings.language'), t('settings.languageHint'), `<select class="input" id="sLang" style="width:200px">${S.langs.map(l => `<option value="${esc(l.code)}" ${l.code === I18N.lang ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>`)}
-    ${row(t('settings.theme'), '', `<div class="seg" id="sTheme">${['dark', 'light', 'auto'].map(x => `<button data-v="${x}" class="${(s.theme || 'dark') === x ? 'on' : ''}">${icon(x === 'dark' ? 'moon' : x === 'light' ? 'sun' : 'sparkles')}${esc(t('theme.' + x))}</button>`).join('')}</div>`)}
+    <div class="set-row set-block"><div class="lbl"><b>${esc(t('settings.theme'))}</b><span>${esc(t('settings.themeHint'))}</span></div><div id="sThemeGrid">${themeGridHTML()}</div></div>
     ${row(t('settings.accent'), '', `<div class="swatches">${Object.entries(ACCENTS).map(([k, v]) => `<span class="swatch ${s.accent === k || (!s.accent && k === 'indigo') ? 'on' : ''}" data-acc="${k}" title="${k}" style="background:linear-gradient(135deg,${v[0]},${v[2]})"></span>`).join('')}</div>`)}
     ${row(t('settings.sounds'), t('settings.soundsHint'), sw('sSounds', s.sounds))}
     ${row(t('settings.activity'), t('settings.activityHint'), sw('sAct', s.showActivity))}
@@ -1578,7 +1648,7 @@ curl -X POST -H "Authorization: Bearer ${esc(s.apiToken || '<token>')}" -d "{\\"
 
   const bindRange = (id, key, fmt) => { const el = $('#' + id, p); el.oninput = () => { $('#' + id + 'O', p).textContent = fmt(+el.value); }; el.onchange = () => saveSettings({ [key]: +el.value }); };
   $('#sLang', p).onchange = e => switchLang(e.target.value);
-  $$('#sTheme button', p).forEach(b => b.onclick = () => { saveSettings({ theme: b.dataset.v }); applyTheme(); $('#sidebar')._html = ''; renderSidebar(); renderSettings(); });
+  $$('#sThemeGrid [data-theme-id]', p).forEach(b => b.onclick = () => pickTheme(b.dataset.themeId));
   $$('[data-acc]', p).forEach(b => b.onclick = () => { saveSettings({ accent: b.dataset.acc }); applyTheme(); renderSettings(); });
   $('#sSounds', p).onchange = e => { saveSettings({ sounds: e.target.checked }); if (e.target.checked) sound('hand'); };
   $('#sAct', p).onchange = e => saveSettings({ showActivity: e.target.checked });
@@ -1645,8 +1715,8 @@ function paletteItems() {
   NAV.concat([{ id: 'help', icon: 'help', label: 'nav.help' }, { id: 'settings', icon: 'settings', label: 'nav.settings' }]).forEach(n => add(t('pal.go'), n.icon, t(n.label), () => setView(n.id)));
   S.state.rooms.forEach(r => add(t('nav.rooms'), 'layers', r.name, () => { selectRoom(r.id); setView('computers'); }));
   S.state.computers.forEach(c => add(t('pal.computers'), online(c) ? 'monitor' : 'offline', c.name, () => { if (online(c)) openViewer(c, false); else { selectRoom(c.room); setView('computers'); } }, c.st && c.st.user ? c.st.user : roomName(c.room), `${c.host} ${(c.st && c.st.user) || ''}`));
-  add(t('settings.theme'), 'sun', t('theme.light'), () => { saveSettings({ theme: 'light' }); applyTheme(); $('#sidebar')._html = ''; renderSidebar(); });
-  add(t('settings.theme'), 'moon', t('theme.dark'), () => { saveSettings({ theme: 'dark' }); applyTheme(); $('#sidebar')._html = ''; renderSidebar(); });
+  THEMES.forEach(th => add(t('settings.theme'), th.base === 'light' ? 'sun' : th.base === 'auto' ? 'sparkles' : 'moon',
+    th.id === 'auto' ? t('theme.auto') : t('theme.name.' + th.id), () => pickTheme(th.id)));
   S.langs.forEach(l => add(t('settings.language'), 'language', l.name, () => switchLang(l.code), l.code.toUpperCase()));
   add(t('computer.add'), 'plus', t('computer.add'), () => computerDialog());
   add(t('room.add'), 'plus', t('room.add'), addRoomDialog);

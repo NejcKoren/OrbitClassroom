@@ -53,6 +53,8 @@ for ARCH in amd64 arm64; do
   GOOS=windows GOARCH=$ARCH CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o "$OUT/OrbitMaster.exe" ./cmd/master
   rm -f cmd/master/embedded/OrbitAgent.exe
   # documentation: the same files the program shows under "Help & guide"
+  sed 's/$/\r/' internal/master/web/docs/en-simple.md > "$OUT/START-HERE-EN.txt"
+  sed 's/$/\r/' internal/master/web/docs/sl-simple.md > "$OUT/ZACNI-TUKAJ-SL.txt"
   sed 's/$/\r/' internal/master/web/docs/en.md > "$OUT/GUIDE_EN.txt"
   sed 's/$/\r/' internal/master/web/docs/sl.md > "$OUT/NAVODILA_SL.txt"
   sed 's/$/\r/' docs/README-FIRST.txt > "$OUT/README-FIRST.txt"

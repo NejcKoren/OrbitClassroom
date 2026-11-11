@@ -8,6 +8,7 @@ keys |= set(re.findall(r"'((?:discover|state|tpl|poll)\.[a-zA-Z0-9_]+)'", src))
 dyn = {
   'act.': [x + y for x in ['demo','lock','view','control','message','poll','website','run','file','screenshot','focus','power','more'] for y in ['', '.tip']],
   'filter.': ['all','online','offline','hands','locked'], 'theme.': ['dark','light','auto'], 'custom.type.': ['run','url','message'],
+  'theme.name.': ['dark','slate','nord','obsidian','dusk','forest','ocean','light','paper','frost','contrast'],
   'poll.pre.': ['yesno','abcd','scale','understand','truefalse','speed'], 'focus.pre.': ['browsers','games','chat','media'],
   'power.': ['reboot','shutdown','logoff'], 'power.warnText.': ['reboot','shutdown'],
   'nav.': ['computers','discover','inbox','polls','shots','help','settings'],

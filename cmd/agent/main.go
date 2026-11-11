@@ -38,6 +38,8 @@ var (
 	fElevated  = flag.Bool("elevated", false, "internal: elevated helper process")
 	fLang      = flag.String("lang", "", "language: en, sl (default: Windows language)")
 	fParent    = flag.Int("parent-pid", 0, "internal: process that must not be stopped")
+	fService   = flag.Bool("service", false, "internal: run as the Windows service")
+	fNoService = flag.Bool("no-service", false, "install without the protected service (autostart only)")
 )
 
 func setupLog() {
@@ -67,6 +69,10 @@ func keysFromFlag() []string {
 func main() {
 	flag.Parse()
 	screen.Init()
+	if *fService {
+		// Launched by the Service Control Manager: supervise user sessions.
+		os.Exit(agent.RunService())
+	}
 	setupLog()
 	log.Printf("Orbit Agent %s starting (%s/%s)", proto.Version, runtime.GOOS, runtime.GOARCH)
 
@@ -287,6 +293,9 @@ func doInstall(tr *agent.Tr, cfg *agent.Config) int {
 		defer os.Remove(tmp)
 		self, _ := os.Executable()
 		args := fmt.Sprintf(`--install --elevated --silent --parent-pid %d --config "%s"`, os.Getpid(), tmp)
+		if *fNoService {
+			args += " --no-service"
+		}
 		code, err := sys.RunElevated(self, args)
 		if err != nil || code != 0 {
 			msg := fmt.Sprintf("exit code %d", code)
@@ -304,7 +313,7 @@ func doInstall(tr *agent.Tr, cfg *agent.Config) int {
 				cfg = c
 			}
 		}
-		if err := agent.Install(cfg, *fParent); err != nil {
+		if err := agent.Install(cfg, *fParent, !*fNoService); err != nil {
 			log.Printf("install failed: %v", err)
 			if !*fSilent {
 				sys.MessageBox("Orbit Agent", tr.T("setup.failed", err.Error()), "error")

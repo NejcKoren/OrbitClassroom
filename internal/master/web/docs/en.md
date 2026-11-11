@@ -47,8 +47,8 @@ What the installer does (for IT staff):
 
 - copies the program to `C:\Program Files\Orbit Classroom\OrbitAgent.exe`
 - writes the configuration to `C:\ProgramData\Orbit Classroom\agent.json` and creates a TLS certificate there; the folder is set to *read-only for students* (Administrators/SYSTEM full control, Users read)
-- registers autostart for every user: `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\OrbitAgent`
-- adds a Windows Firewall rule "Orbit Agent" (incoming connections for this program)
+- **registers a protected Windows service** `OrbitAgentSvc` running as LocalSystem, start type automatic, with restart-on-crash recovery actions. The service supervises the user-session agent and relaunches it within ~2 seconds if it stops (see 3.6)
+- adds a Windows Firewall rule "Orbit Agent" for the program, inbound **and** outbound, on every profile
 - adds an entry to **Settings → Apps** so it can be uninstalled normally
 
 ### 3.2 Many computers at once (silent installation)
@@ -65,7 +65,16 @@ The key is read from **orbit-agent.json** in the same folder. You can also pass 
 OrbitAgent.exe --install --silent --key OPK1-XXXX-XXXX-...
 ```
 
-With `--silent` no windows are shown. The agent starts at the next sign-in (or restart the computer). Exit code 0 = success.
+With `--silent` no windows are shown. The protected service starts immediately and launches the agent in the current session; it also runs for every future user. Exit code 0 = success.
+
+Extra flags for mass deployment:
+
+| Flag | Meaning |
+|---|---|
+| `--key OPK1-…` | the classroom key (or several, comma separated) |
+| `--no-service` | install the lightweight way (autostart only, no protected service — a student could then close the agent until the next sign-in) |
+| `--port N` | use a different TCP port |
+| `--lang sl` | force the student language |
 
 ### 3.3 Trying it without installing
 
@@ -77,7 +86,22 @@ Run the new OrbitAgent.exe with `--install` (or the new setup package) – it re
 
 ### 3.5 Removing
 
-**Settings → Apps → Orbit Agent (Orbit Classroom) → Uninstall**, or `OrbitAgent.exe --uninstall` (add `--silent` for scripts).
+**Settings → Apps → Orbit Agent (Orbit Classroom) → Uninstall**, or `OrbitAgent.exe --uninstall` (add `--silent` for scripts). Uninstalling stops and deletes the service, removes the firewall rule and deletes the program and its configuration. Administrator rights are required (the program asks for them).
+
+### 3.6 Protected mode – why a student cannot turn it off
+
+By default the agent is installed as a **Windows service** (`OrbitAgentSvc`). This matters in a classroom:
+
+- The service runs as the computer's **SYSTEM** account and starts **before** anyone signs in. Stopping or deleting a Windows service needs administrator rights, so a student (a standard user) cannot switch the monitoring off from Services, `sc stop`, or the Task Manager "Services"/"Startup" tabs.
+- If a student ends the agent from Task Manager, the service notices and **relaunches it within about two seconds**, so the teacher only loses the screen for a moment.
+- If the service itself ever crashes, Windows restarts it automatically (recovery actions).
+- The program lives in `C:\Program Files\...`, which a standard user cannot modify or delete, and its configuration folder is read-only for them.
+
+Nothing is hidden: the agent still shows the tray icon and the "your teacher is viewing your screen" notifications exactly as before. Protected mode only changes **who may turn it off** (an administrator), not **whether the student can tell it is there** (they always can).
+
+If you would rather have the lightweight behaviour – the agent starts at sign-in but a student could close it until the next sign-in – install with `--no-service`. This can be useful on teachers' own laptops or for quick trials.
+
+> Note on the Windows sign-in screen: the agent shows the teacher a screen only while a user is signed in, because screen capture must run inside that user's session. The service keeps the agent alive and relaunches it, but it cannot display the Windows password screen itself. Power-on, restart and shutdown of signed-in computers work regardless.
 
 ## 4. Windows security warnings – what they mean
 
@@ -85,7 +109,7 @@ Run the new OrbitAgent.exe with `--install` (or the new setup package) – it re
 
 **Antivirus.** Programs that can view and control screens are sometimes flagged by antivirus software because remote-control tools can be misused. If OrbitAgent.exe is blocked, add an exception for `C:\Program Files\Orbit Classroom\`.
 
-**Firewall.** The installer creates the firewall rule automatically. If you use a different firewall product, allow incoming TCP 21400 and UDP 21401 for OrbitAgent.exe.
+**Firewall.** The installer opens the Windows Firewall for OrbitAgent.exe automatically, inbound and outbound, on every network profile (domain, private and public), so the teacher can always reach the computer. If your school uses a different firewall product, allow TCP 21400 and UDP 21401 for OrbitAgent.exe.
 
 **Administrator prompt.** Only the *installation* of the agent needs administrator rights. Orbit Master never needs them.
 
@@ -412,21 +436,20 @@ Orbit Classroom covers the everyday classroom functions of Veyon Master and adds
 | Run program / open website | yes – plus favorites |
 | File transfer, screenshots | yes – plus screenshot gallery |
 | Rooms (locations) | yes – drag & drop, seat order, automatic network search built in |
-| New | live polls, raise hand, student messages, focus mode, activity & idle time, spotlight, command palette, dark/light themes, English + Slovenian with language packs, built-in guide, custom actions, automation API, one-click setup package |
+| New | protected service mode (a student cannot close the agent), live polls, raise hand, student messages, focus mode, activity & idle time, spotlight, command palette, twelve colour themes (dark & light) + accent colours, English + Slovenian with language packs, a plain-language "Simple" guide plus the full guide, custom actions, automation API, one-click setup package |
 | Not (yet) available | signing in a user remotely, viewing the Windows sign-in screen before a user is signed in, Linux/macOS computers, LDAP/Active Directory import (see chapter 16) |
 
 ## 16. Known limitations and roadmap
 
 Limitations of version 1.0:
 
-- The agent runs in the signed-in user's session. Before anyone signs in, the computer appears offline (power on, restart and shutdown of signed-in computers work).
-- A student can end the agent with Task Manager; the computer then appears offline until the next sign-in.
+- The agent captures the screen inside the signed-in user's session. Before anyone signs in, the computer shows no screen (power on, restart and shutdown of signed-in computers work). The protected service keeps the agent alive once a user signs in and relaunches it if a student closes it, but it cannot display the Windows sign-in (password) screen itself.
 - Only one signed-in user per computer (no Remote Desktop servers).
 - UAC prompts, the Ctrl+Alt+Del screen and elevated programs cannot be controlled (Windows security).
 - Windows 10/11 only.
 - This is a first version: test it in one room before rolling it out to the whole school.
 
-Planned / possible next steps: Windows service mode (sign-in screen, remote sign-in, protection against closing), Active Directory/CSV import of rooms, scheduled actions (e.g. lock at the end of the lesson – already possible with the API), collecting files from students, website blocking, Linux agent, more languages.
+Planned / possible next steps: showing and signing in at the Windows sign-in screen, Active Directory/CSV import of rooms, scheduled actions (e.g. lock at the end of the lesson – already possible with the API), collecting files from students, website blocking, Linux agent, more languages.
 
 ## 17. Command-line reference
 
@@ -435,14 +458,17 @@ OrbitAgent.exe:
 | Option | Meaning |
 |---|---|
 | (none) | start; the first start shows the setup window |
-| --install | install for all users (asks for administrator rights) |
+| --install | install for all users as a protected service (asks for administrator rights) |
 | --install --silent | install without any window (scripts, GPO, Intune) |
+| --install --no-service | install the lightweight way (autostart only, a student can close it) |
 | --key OPK1-… | classroom key(s), comma separated (with --install) |
 | --uninstall [--silent] | remove from this computer |
 | --portable | run without installing |
 | --port N | other TCP port |
 | --lang sl | language of the student texts |
 | --config file | use a specific configuration file |
+
+(`--service` is used internally by Windows to run the background service; you never type it yourself.)
 
 OrbitMaster.exe:
 

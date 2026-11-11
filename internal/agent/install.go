@@ -92,7 +92,10 @@ func stopOthers(keepPID int) {
 }
 
 // Install installs the agent machine-wide. Must run as administrator.
-func Install(cfg *Config, keepPID int) error {
+// When service is true (the default) the agent is registered as a protected
+// SYSTEM service that a student cannot stop; otherwise it starts for each user
+// through an autostart registry entry only.
+func Install(cfg *Config, keepPID int, service bool) error {
 	if runtime.GOOS != "windows" {
 		return errors.New("installation is only supported on Windows")
 	}
@@ -111,7 +114,8 @@ func Install(cfg *Config, keepPID int) error {
 	if err != nil {
 		return err
 	}
-	// stop other running agents so the exe can be replaced
+	// stop other running agents and any previous service so the exe can be replaced
+	RemoveService()
 	stopOthers(keepPID)
 
 	if err := os.MkdirAll(InstallDir(), 0o755); err != nil {
@@ -152,14 +156,31 @@ func Install(cfg *Config, keepPID int) error {
 	if err := run("icacls", data, "/inheritance:r", "/grant:r", "*S-1-5-32-544:(OI)(CI)F", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-545:(OI)(CI)RX"); err != nil {
 		log.Printf("warning: %v", err)
 	}
-	if err := run("reg", "add", runKey, "/v", "OrbitAgent", "/t", "REG_SZ", "/d", `"`+exe+`" --autostart`, "/f"); err != nil {
-		return err
+	if service {
+		// Protected mode: a SYSTEM service launches and watches the agent in
+		// every session. No Run key, so a student cannot disable it from the
+		// Startup tab, and the service itself needs admin rights to stop.
+		run("reg", "delete", runKey, "/v", "OrbitAgent", "/f")
+		if err := InstallService(exe); err != nil {
+			// fall back to autostart so the computer is at least manageable
+			log.Printf("warning: service install failed (%v); using autostart instead", err)
+			run("reg", "add", runKey, "/v", "OrbitAgent", "/t", "REG_SZ", "/d", `"`+exe+`" --autostart`, "/f")
+		}
+	} else {
+		RemoveService()
+		if err := run("reg", "add", runKey, "/v", "OrbitAgent", "/t", "REG_SZ", "/d", `"`+exe+`" --autostart`, "/f"); err != nil {
+			return err
+		}
 	}
+	// Open the Windows Firewall for the agent on every network profile, both
+	// incoming and outgoing, so the teacher can always reach it.
 	run("netsh", "advfirewall", "firewall", "delete", "rule", "name=Orbit Agent")
 	if err := run("netsh", "advfirewall", "firewall", "add", "rule", "name=Orbit Agent", "dir=in", "action=allow",
 		"program="+exe, "enable=yes", "profile=any", "description=Orbit Classroom student agent"); err != nil {
-		log.Printf("warning: firewall rule: %v", err)
+		log.Printf("warning: firewall rule (in): %v", err)
 	}
+	run("netsh", "advfirewall", "firewall", "add", "rule", "name=Orbit Agent", "dir=out", "action=allow",
+		"program="+exe, "enable=yes", "profile=any", "description=Orbit Classroom student agent")
 	for _, kv := range [][3]string{
 		{"DisplayName", "REG_SZ", "Orbit Agent (Orbit Classroom)"},
 		{"DisplayVersion", "REG_SZ", proto.Version},
@@ -185,6 +206,8 @@ func Uninstall(keepPID int) error {
 	if !sys.IsAdmin() {
 		return errors.New("administrator rights required")
 	}
+	// stop and delete the service first, otherwise it would relaunch the agents
+	RemoveService()
 	stopOthers(keepPID)
 	run("reg", "delete", runKey, "/v", "OrbitAgent", "/f")
 	run("reg", "delete", uninstKey, "/f")

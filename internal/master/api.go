@@ -351,17 +351,31 @@ func (m *Master) handleDocs(w http.ResponseWriter, r *http.Request) {
 	if !validLang(lang) {
 		lang = "en"
 	}
+	// ?kind=simple serves the short, plain-language guide (<lang>-simple.md).
+	suffix := ""
+	if r.URL.Query().Get("kind") == "simple" {
+		suffix = "-simple"
+	}
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
-	if b, err := os.ReadFile(filepath.Join(m.langDir(), lang+".md")); err == nil {
-		w.Write(b)
-		return
+	for _, p := range []string{
+		filepath.Join(m.langDir(), lang+suffix+".md"),
+	} {
+		if b, err := os.ReadFile(p); err == nil {
+			w.Write(b)
+			return
+		}
 	}
-	if b, err := webFS.ReadFile("web/docs/" + lang + ".md"); err == nil {
-		w.Write(b)
-		return
+	for _, p := range []string{
+		"web/docs/" + lang + suffix + ".md",
+		"web/docs/en" + suffix + ".md",
+		"web/docs/" + lang + ".md",
+		"web/docs/en.md",
+	} {
+		if b, err := webFS.ReadFile(p); err == nil {
+			w.Write(b)
+			return
+		}
 	}
-	b, _ := webFS.ReadFile("web/docs/en.md")
-	w.Write(b)
 }
 
 func (m *Master) handleView(w http.ResponseWriter, r *http.Request) {
@@ -1154,19 +1168,23 @@ const packageReadme = `ORBIT AGENT - STUDENT COMPUTER SETUP
 EN  Install on every student computer:
     1. Copy this whole folder to the student computer (USB stick or network share).
     2. Double-click "Install-Orbit-Agent.cmd" (or OrbitAgent.exe) and confirm the
-       Windows administrator prompt.
-    3. Done. The agent starts automatically for every user at sign-in.
+       Windows administrator prompt. (If Windows warns, click More info > Run anyway.)
+    3. Done. The agent is installed as a protected background service: it starts
+       automatically for every user and a student cannot close it.
     Mass deployment (GPO / Intune / script, run as administrator or SYSTEM):
        OrbitAgent.exe --install --silent
+    Lightweight install (no protected service):  OrbitAgent.exe --install --no-service
     Remove:  Settings > Apps > "Orbit Agent" > Uninstall   or   OrbitAgent.exe --uninstall
 
 SL  Namestite na vsak učenčev računalnik:
     1. Kopirajte celotno mapo na učenčev računalnik (USB ključ ali omrežna mapa).
     2. Dvokliknite "Install-Orbit-Agent.cmd" (ali OrbitAgent.exe) in potrdite
-       skrbniško okno sistema Windows.
-    3. Končano. Agent se samodejno zažene za vsakega uporabnika ob prijavi.
+       skrbniško okno. (Če Windows opozori, kliknite Več informacij > Vseeno zaženi.)
+    3. Končano. Agent je nameščen kot zaščitena storitev v ozadju: samodejno se
+       zažene za vsakega uporabnika in učenec ga ne more zapreti.
     Množična namestitev (GPO / Intune / skripta, kot skrbnik ali SYSTEM):
        OrbitAgent.exe --install --silent
+    Preprosta namestitev (brez zaščitene storitve):  OrbitAgent.exe --install --no-service
     Odstranitev:  Nastavitve > Aplikacije > "Orbit Agent" > Odstrani   ali   OrbitAgent.exe --uninstall
 
 The file orbit-agent.json contains only the PUBLIC teacher key (safe to share).
